@@ -18,28 +18,24 @@
  *  limitations under the License.
  */
 
-#ifndef FLB_OUT_PULSAR_CONTEXT_H
-#define FLB_OUT_PULSAR_CONTEXT_H
+#ifndef FLB_OUT_PULSAR_CONFIG_H
+#define FLB_OUT_PULSAR_CONFIG_H
 
-#include "pulsar_client.h"
+#include <fluent-bit/flb_output.h>
 
-struct flb_pulsar_context
-{
-    struct flb_pulsar_client *client;
+#include <pulsar/c/client.h>
 
-    struct flb_output_instance *output_instance;
+pulsar_producer_configuration_t
+    * flb_pulsar_config_producer_config_create(struct flb_output_instance *
+                                              const ins);
 
-    pulsar_result(*publish_fn) (struct flb_pulsar_context * context,
-                                pulsar_message_t * msg);
+pulsar_client_configuration_t *flb_pulsar_config_client_config_create(struct
+                                                                     flb_output_instance
+                                                                     *const
+                                                                     ins);
 
-    pulsar_result(*connect_fn) (struct flb_pulsar_context * context);
-};
+void flb_pulsar_config_producer_config_destroy(pulsar_producer_configuration_t *cfg);
 
-struct flb_pulsar_context *flb_pulsar_context_create(struct
-                                                     flb_output_instance *ins,
-                                                     struct flb_config
-                                                     *config);
-
-int flb_pulsar_context_destroy(struct flb_pulsar_context *ctx);
+void flb_pulsar_config_client_config_destroy(pulsar_client_configuration_t *cfg);
 
 #endif

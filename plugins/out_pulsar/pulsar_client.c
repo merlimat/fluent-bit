@@ -18,7 +18,8 @@
  *  limitations under the License.
  */
 
-#include "pulsar_client.h"
+#include "./pulsar_client.h"
+#include "./pulsar_config.h"
 
 #include <math.h>
 
@@ -34,56 +35,74 @@ struct flb_pulsar_client *flb_pulsar_client_create(struct flb_output_instance
         return NULL;
     }
 
-    client->client_config = pulsar_client_configuration_create();
-    client->producer_config = pulsar_producer_configuration_create();
+    client->client_config = flb_pulsar_config_client_config_create(ins);
+    client->producer_config = flb_pulsar_config_producer_config_create(ins);
 
     if (!client->client_config || !client->producer_config) {
-        flb_error("[out_pulsar] Unable to create pulsar configuration objects");
+        flb_error
+            ("[out_pulsar] Unable to create pulsar configuration objects");
         flb_pulsar_client_destroy(client);
         return NULL;
     }
 
-    // client init
     flb_output_net_default("localhost", 6650, ins);
     char *service_url =
-        flb_malloc(9 + strlen(ins->host.name) +
+        flb_malloc(13 + strlen(ins->host.name) +
                    ceil(log10(ins->host.port)) + 1);
-    sprintf(service_url, "pulsar://%s:%d", ins->host.name, ins->host.port);
-
+    sprintf(service_url, "pulsar%s://%s:%d", (ins->use_tls ? "+ssl" : ""), ins->host.name, ins->host.port);
     client->client = pulsar_client_create(service_url, client->client_config);
     flb_free(service_url);
 
     if (!client->client) {
-        flb_error("[out_pulsar] Unable to create client object for service URL %s", service_url);
-        flb_pulsar_client_destroy(client);
-        return NULL;
-    }
-
-    // producer init
-    char *producer_name = flb_output_get_property("producer_name", ins);
-
-    if (producer_name) {
-        pulsar_producer_configuration_set_producer_name(client->producer_config,
-                                                        producer_name);
-    }
-    pulsar_producer_configuration_set_compression_type(client->producer_config, pulsar_CompressionLZ4);
-    pulsar_producer_configuration_set_block_if_queue_full(client->producer_config, 1);
-
-    char *property = NULL;
-    char *topic = (property = flb_output_get_property("topic", ins)) ? property : "fluent-bit";
-
-    pulsar_result create_producer_result = pulsar_client_create_producer(client->client, topic, client->producer_config,
-                                                                        &client->producer);
-    if (create_producer_result != pulsar_result_Ok || !client->producer) {
-        flb_error("[out_pulsar] Failed to create producer, result was %s (pointer is %s)",
-            pulsar_result_str(create_producer_result),
-            client->producer ? "not null" : "NULL");
+        flb_error
+            ("[out_pulsar] Unable to create client object for service URL %s",
+             service_url);
         flb_pulsar_client_destroy(client);
         return NULL;
     }
 
     return client;
 }
+
+pulsar_result flb_pulsar_client_create_producer(struct flb_pulsar_client *
+                                                client,
+                                                struct flb_output_instance *
+                                                ins)
+{
+    pulsar_result result = pulsar_result_UnknownError;
+
+    char *topic = flb_output_get_property("topic", ins);
+    if (!topic) {
+        topic = "fluent-bit";
+    }
+
+    if (client && client->client && client->producer_config) {
+        pulsar_result create_producer_result =
+            pulsar_client_create_producer(client->client, topic,
+                                          client->producer_config,
+                                          &client->producer);
+        if (create_producer_result != pulsar_result_Ok || !client->producer) {
+            flb_error
+                ("[out_pulsar] Failed to create producer for topic %s, result was %s (pointer is %s)",
+                 topic, pulsar_result_str(create_producer_result),
+                 client->producer ? "not null" : "NULL");
+        }
+        result = create_producer_result;
+    }
+    else {
+        flb_error
+            ("[out_pulsar] Unknown state; attempted to create producer with missing client and/or config objects.");
+    }
+    return result;
+}
+
+pulsar_result flb_pulsar_client_produce_message(struct flb_pulsar_client *
+                                                client,
+                                                pulsar_message_t * msg)
+{
+    return pulsar_producer_send(client->producer, msg);
+}
+
 
 int flb_pulsar_client_destroy(struct flb_pulsar_client *client)
 {
@@ -94,7 +113,7 @@ int flb_pulsar_client_destroy(struct flb_pulsar_client *client)
         }
 
         if (client->producer_config) {
-            pulsar_producer_configuration_free(client->producer_config);
+            flb_pulsar_config_producer_config_destroy(client->producer_config);
         }
 
         if (client->client) {
@@ -103,7 +122,7 @@ int flb_pulsar_client_destroy(struct flb_pulsar_client *client)
         }
 
         if (client->client_config) {
-            pulsar_client_configuration_free(client->client_config);
+            flb_pulsar_config_client_config_destroy(client->client_config);
         }
         flb_free(client);
     }
