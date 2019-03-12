@@ -1,0 +1,22 @@
+FLB_OPTION(LWS_WITH_MBEDTLS On)
+FLB_OPTION(LWS_WITH_SHARED Off)
+
+FLB_OPTION(LWS_WITHOUT_SERVER On)
+FLB_OPTION(LWS_WITHOUT_TESTAPPS On)
+FLB_OPTION(LWS_WITHOUT_TEST_SERVER On)
+FLB_OPTION(LWS_WITHOUT_TEST_SERVER_EXTPOLL On)
+FLB_OPTION(LWS_WITHOUT_TEST_PING On)
+FLB_OPTION(LWS_WITHOUT_TEST_CLIENT On)
+
+FLB_OPTION(LWS_MBEDTLS_INCLUDE_DIRS ${FLB_ROOT}/lib/mbedtls-2.14.1/include)
+FLB_OPTION(LWS_MBEDTLS_LIBRARIES "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/libmbedtls.a"
+                                 "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/libmbedx509.a"
+                                 "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/libmbedcrypto.a")
+
+add_subdirectory(libwebsockets-3.1.0 EXCLUDE_FROM_ALL)
+include_directories("${CMAKE_CURRENT_BINARY_DIR}/libwebsockets-3.1.0/include")
+
+set(src
+  pulsar_ws.c)
+
+FLB_PLUGIN(out_pulsar_ws "${src}" "websockets")
