@@ -37,7 +37,7 @@ SET(PULSAR_DEPS pulsarStatic
     /usr/lib/x86_64-linux-gnu/libboost_system.a
     /usr/lib/x86_64-linux-gnu/libz.a
     /usr/lib/x86_64-linux-gnu/libprotobuf-lite.a
-    /usr/lib/x86_64-linux-gnu/libcurl.so.3
+    ${CURL_LIBRARY_PATH}
 )
 
 FLB_PLUGIN(out_pulsar "${src}" "${PULSAR_DEPS}")
