@@ -97,11 +97,15 @@ pulsar_result flb_pulsar_client_create_producer(struct flb_pulsar_client *
     return result;
 }
 
+static void send_callback(pulsar_result res, pulsar_message_t* msg, void* ctx) {
+    // Ignore errors here since we're forcing the flush
+}
+
 void flb_pulsar_client_produce_message(struct flb_pulsar_client *
                                                 client,
                                                 pulsar_message_t * msg)
 {
-    pulsar_producer_send_async(client->producer, msg, NULL, NULL);
+    pulsar_producer_send_async(client->producer, msg, send_callback, NULL);
     pulsar_message_free(msg);
 }
 
